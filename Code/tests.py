@@ -25,44 +25,55 @@ def cnot_chain_mat(n):
                 curr = kronecker(curr,CNOT)
             else:
                 curr = kronecker(curr,torch.eye(2))
-            # curr = CNOT if i==0 else torch.eye(2)
-            # if i != 0 and i == j:
-            #     curr = kronecker(curr, CNOT)
-            # else:
-            #     curr = kronecker(curr,torch.eye(2))
-        print(curr)
-        #out = out@curr
+        out = out@curr
+    return out
 CNOT = torch.tensor([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]])
 
 # %%
 n = 4
 cnot_chain = cnot_chain_mat(n)
 assert n%2 == 0
-target = torch.abs(torch.randn(2**n))
-target = target / torch.norm(target)
-x = Variable(torch.ones(2*n), requires_grad=True)
+
 
 
 # %%
-def getkronecker(x): # x must be a vector
+def getkronecker(x, CNOT_CHAIN=False): # x must be a vector
     out = x[0:2]
     for i in range(1, len(x)//2): # guaranteed currently by global assertion
         out = vectorkronecker(x[i:i+2], out)
-    out = cnot_chain@out
+    if CNOT_CHAIN:
+        out = cnot_chain@out
     return out
 
-def subtract_target(x, target=target):
+def subtract_target(x, target):
     return torch.abs(x-target).mean()
 
 # %%
-optim = torch.optim.Adam([x], lr=0.01)
-for i in range(100):
-    optim.zero_grad()
-    out = subtract_target(getkronecker(x))
-    if (i % 5) == 0: print(out)
-    out.backward()
-    optim.step()
-    
+# INIT PARAMS
+
+
+"""
+EXPERIMENT 1: Tensor product linear subspace of 2^n-1 dim entangled
+space
+"""
+RUNS = 500
+runs_loss = []
+for run in range(RUNS):
+    if run % 10 == 0:
+        print(f"Run {run} of {RUNS}")
+    target = torch.abs(torch.randn(2**n))
+    target = target / torch.norm(target)
+    x = Variable(torch.ones(2*n), requires_grad=True)
+    optim = torch.optim.Adam([x], lr=0.005)
+    for i in range(1000):
+        optim.zero_grad()
+        out = subtract_target(getkronecker(x), target)
+        if i % 500 == 0: print(out)
+        out.backward()
+        optim.step()
+    runs_loss.append(out)
+#%%
+print("RU")
 # %%
 """
 Testing that my code could actually even work if I had 

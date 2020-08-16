@@ -7,8 +7,14 @@
 - 28 (quantum form of backprop)
 - 2,23 finite difference gradients. (30,31)
 - 8, 32, 33 (QNN parameter initalization)
-- 10, ckass if absatze known as quantum alternating operator ansatze.
+  - [8] L. Zhou, S.-T. Wang, S. Choi, H. Pichler, and M. D.Lukin, arXiv preprint arXiv:1812.01041 (2018).
+  - [32] Z.-C. Yang, A. Rahmani, A. Shabani, H. Neven, and C. Chamon, Physical Review X 7, 021027 (2017)
+  - [33] E. Grant, L. Wossnig, M. Ostaszewski,
+and M. Benedetti, arXiv preprint arXiv:1903.05076 (2019)
+- 10, class of ansatze known as quantum alternating operator ansatze.
 - 29, optimization landscape of QNNs
+  - [29] rXiv:1806.09729 (2018).J. R. Mcclean, S. Boixo, V. N. Smelyanskiy, R. Babbush, and H. Neven, Nature Communications 9 (2018),
+10.1038/s41467-018-07090-4.
 
 ## Abstract
 * Meta-learning approach to rapidly find approximate optima in the parameter landscape for **classes of quantum variational algorithms**
