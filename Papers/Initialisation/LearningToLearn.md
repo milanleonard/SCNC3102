@@ -22,7 +22,7 @@ and M. Benedetti, arXiv preprint arXiv:1903.05076 (2019)
 * Focusses on the **initialisation** of the quantum parameters
 
 ## Introduction
-* We train this RNN using random problem instances from specific classes of problems  -- QUAO for MaxCut, QAOA for Sherrington-Kirkpatrick Ising models, and VQE
+* We train this RNN using random problem instances from specific classes of problems  -- QAOA for MaxCut, QAOA for Sherrington-Kirkpatrick Ising models, and VQE
 
 ## Quantum Classical Meta Learning
 ### Variational quantum algorithms
