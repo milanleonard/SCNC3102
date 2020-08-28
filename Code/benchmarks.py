@@ -9,6 +9,7 @@ import networkx as nx
 from pennylane import expval, var
 #%%
 # -----------------
+## COMPUTE TRUE MINIMUM
 # SECTION 1: SINGLE VQE PROBLEM - QNG, SGD, ADAM etc. GO THROUGH EACH OF THE GRADIENT BASED UPDATE METHODS
 """ SETUP VARIATONAL CIRCUIT: TAKEN FROM https://pennylane.ai/qml/demos/tutorial_quantum_natural_gradient.html"""
 dev = qml.device("default.qubit", wires=3)
@@ -35,7 +36,7 @@ def circuit(params):
     qml.CNOT(wires=[0, 1])
     qml.CNOT(wires=[1, 2])
 
-    return qml.expval(qml.PauliY(0))
+    return qml.expval(qml.PauliY(0)) 
 # %% GLOBAL PARAMS FOR EACH TEST
 steps = 400
 init_params = np.array([0.432, -0.123, 0.543, 0.233])
@@ -95,25 +96,8 @@ def plot_descents(save=False):
         plt.savefig("./Images/descentcomparisons.png")
     plt.show()
 #%% Running the plot
-plot_descents(True)
-
-#%% By circuit evals
-def plot_descents(save=False):
-    plt.xlabel("Number of _iterations_")
-    plt.ylabel("Cost functions")
-    plt.title("Optimizer performance")
-    plt.plot(GradientDescentCost, label="Standard gradient descent")
-    plt.plot(Quantum_natural_GD_Cost, label="Quantum Natural Gradient")
-    plt.plot(Rotosolve_Cost, label="Rotosolve analytic minimum")
-    plt.plot(Adam_Cost, label="ADAM optimizer")
-    plt.legend()
-    if save:
-        plt.savefig("./Images/descentcomparisons.png")
-    plt.show()
-#%% Running the evals plot
-plot_descents(True)
-
-#%% Let's have a look at the cost landscape
+plot_descents(save=False)
+2#%% Let's have a look at the cost landscape
 from functools import partial
 def wrap_circuit(param1,param2):
     def circuit_wrap(theta0,theta1,theta2,theta3):
@@ -121,17 +105,21 @@ def wrap_circuit(param1,param2):
     circuitwrapvec = np.vectorize(partial(circuit_wrap,param1,param2))
     return circuitwrapvec
 #circuitwrapvec = wrap_circuit(theta[0],theta[1])
-circuitwrapvec = wrap_circuit(0.1,0.3)
-grid_size = 20
+circuitwrapvec = wrap_circuit(thetart[0],thetart[1])
+grid_size = 30
 X, Y = np.meshgrid(np.linspace(-np.pi,np.pi,grid_size),np.linspace(-np.pi,np.pi,grid_size))
 Z = circuitwrapvec(X,Y)
 
+#%%
 # Plot this stuff
 fig = plt.figure()
 ax = plt.axes(projection='3d')
 
 ax.plot_surface(X, Y, Z,cmap='viridis', edgecolor='none')
-ax.set_title('Surface plot')
+ax.set_title('Cost landscape for two parameters')
+ax.set_xlabel("$\theta_1$")
+ax.set_ylabel("$\theta_2$")
+ax.set_zlabel("$\mathcal{L}(\mathbb{\theta})")
 plt.show()
 
 # -----------------
