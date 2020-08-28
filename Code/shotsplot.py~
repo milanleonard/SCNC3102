@@ -16,7 +16,7 @@ ROTO_COST = np.zeros((DENSITY,STEPS))
 ADAM_COST = np.zeros((DENSITY,STEPS))
 QNG_COST = np.zeros((DENSITY,STEPS))
 for x_idx, shotnum in enumerate(SHOTRANGE):
-    #print(f"round {x_idx} of {DENSITY} with {shotnum} shots")
+    print(f"round {x_idx} of {DENSITY} with {shotnum} shots")
     dev = qml.device("default.qubit", wires=3, analytic=False, shots=shotnum)
     
     @qml.qnode(dev)
@@ -49,13 +49,13 @@ for x_idx, shotnum in enumerate(SHOTRANGE):
     #%%
 
     opt = qml.GradientDescentOptimizer(0.01)
-    #print("Doing the gradient descent")
+    print("Doing the gradient descent")
     thetagd = init_params
     for y_idx in range(STEPS):
         thetagd = opt.step(circuit, thetagd)
         GD_COST[x_idx,y_idx] = circuit(thetagd)
     #%% Quantum natural gradient
-    #print("Doing the quantum natural gradient")
+    print("Doing the quantum natural gradient")
     thetaqng = init_params
     opt = qml.QNGOptimizer(0.01)
 
@@ -72,7 +72,7 @@ for x_idx, shotnum in enumerate(SHOTRANGE):
 
     #%% ROTOSOLVE
 
-    #print("Doing rotosolve")
+    print("Doing rotosolve")
     opt = qml.RotosolveOptimizer()
 
     thetart = init_params
@@ -80,14 +80,14 @@ for x_idx, shotnum in enumerate(SHOTRANGE):
         thetart = opt.step(circuit, thetart)
         ROTO_COST[x_idx,y_idx] = circuit(thetart)
 
-    #print("Doing adam")
+    print("Doing adam")
     opt = qml.AdamOptimizer(0.01)
 
     thetaadam = init_params
     for y_idx in range(STEPS):
         thetaadam = opt.step(circuit, thetaadam)
         ADAM_COST[x_idx,y_idx] = circuit(thetaadam)
-#print("Finished all, saving")
+print("Finished all, saving")
 
 np.save("./datafiles/qngshotcosttoy.npy",QNG_COST)
 np.save("./datafiles/rotoshotcosttoy.npy",ROTO_COST)
