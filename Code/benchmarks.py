@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import random
 import networkx as nx
 from pennylane import expval, var
+
 #%%
 # -----------------
 ## COMPUTE TRUE MINIMUM
