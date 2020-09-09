@@ -6,6 +6,10 @@ import random
 import networkx as nx
 from pennylane import expval, var
 from functools import partial
+from collections import defaultdict
+def strdefaultdict():
+    return defaultdict(str)
+
 # -----------------
 # SECTION 2: QAOA FOR MAX CUT
 #%% CONSTRUCTING CONNECTED GRAPHs
@@ -156,8 +160,8 @@ Dictionary structure of output will look like
 
 #%%
 if __name__ == "__main__":
-    from collections import defaultdict
-    from .utils import strdefaultdict
+    
+    
 
     output = defaultdict(strdefaultdict)
 
