@@ -1,9 +1,7 @@
 #%% Imports
 from pennylane import numpy as np # get pennylane's numpy wrapper
-import qiskit
 import pennylane as qml
 from itertools import combinations, groupby
-import matplotlib.pyplot as plt
 import random
 import networkx as nx
 from pennylane import expval, var
