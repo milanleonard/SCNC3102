@@ -82,19 +82,11 @@ for _ in range(steps):
     thetaadam = opt.step(circuit, thetaadam)
     Adam_Cost.append(circuit(thetaadam))
 
+
+
+
 #%% Plotting
-def plot_descents(save=False):
-    plt.xlabel("Number of _iterations_")
-    plt.ylabel("Cost functions")
-    plt.title("Optimizer performance")
-    plt.plot(GradientDescentCost, label="Standard gradient descent")
-    plt.plot(Quantum_natural_GD_Cost, label="Quantum Natural Gradient")
-    plt.plot(Rotosolve_Cost, label="Rotosolve analytic minimum")
-    plt.plot(Adam_Cost, label="ADAM optimizer")
-    plt.legend()
-    if save:
-        plt.savefig("./Images/descentcomparisons.png")
-    plt.show()
+
 #%% Running the plot
 plot_descents(save=False)
 2#%% Let's have a look at the cost landscape
@@ -117,10 +109,16 @@ ax = plt.axes(projection='3d')
 
 ax.plot_surface(X, Y, Z,cmap='viridis', edgecolor='none')
 ax.set_title('Cost landscape for two parameters')
-ax.set_xlabel("$\theta_1$")
-ax.set_ylabel("$\theta_2$")
+ax.set_xlabel("theta_1")
+ax.set_ylabel("$theta_2$")
 ax.set_zlabel("$\mathcal{L}(\mathbb{\theta})")
 plt.show()
 
 
+# %%
+import pickle as pkl
+toymodel = {"adam":Adam_Cost, "gd":GradientDescentCost, "qng":Quantum_natural_GD_Cost, \
+    "roto":Rotosolve_Cost, "meshgrid":[X,Y,Z]}
+with open("./datafiles/toymodel.pkl","wb") as f:
+    pkl.dump(toymodel, f)
 # %%
