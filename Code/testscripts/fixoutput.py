@@ -45,7 +45,7 @@ def qaoa_costland(graph, n_layers, init_params, final_params):
     # SETUP PARAMETERS
     n_wires = len(graph.nodes)
     edges = graph.edges
-    grid_size = 20
+    grid_size = 50
     X, Y = np.meshgrid(np.linspace(-np.pi,np.pi,grid_size),np.linspace(-np.pi,np.pi,grid_size))
     def U_B(beta):
         for wire in range(n_wires):
@@ -105,19 +105,17 @@ Ps = (0.2, 0.2, 0.3, 0.1)
 
 GRAPHS = [gnp_random_connected_graph(n,p, 42) for n,p in zip(Ns, Ps)]
 GRAPH_NAMES = ["4, 0.2", "8, 0.2", "12, 0.3", "12, 0.1"]
+graphnames_to_idx = {"4, 0.2":0,"8, 0.2":1,"12, 0.3":2,  "12, 0.1":3 }
 OPTIM_NAMES = ["adam", "gd", "roto"]
 arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(1,3)]
 num_layers = [str(i) for i in range(3)]
-with open("./datafiles/output.pkl", "rb") as f:
+with open("../datafiles/output.pkl", "rb") as f:
     maxcutbenchmark = pkl.load(f)
 
 for idx, (i,j,k) in enumerate(arr_map_over):
+    print(f"At {idx} of {len(arr_map_over)}")
     init_params, final_params = np.array(maxcutbenchmark[i][j][k]['params'][0]), np.array(maxcutbenchmark[i][j][k]['params'][-1])
-    maxcutbenchmark[i][j][k]["meshgrids"] = qaoa_costland(GRAPHS[idx], int(k), init_params, final_params)
-    del maxcutbenchmark[i][j][k]['MeshGridStartFirstParams']
-    del maxcutbenchmark[i][j][k]['MeshGridStartLastParams']
-    del maxcutbenchmark[i][j][k]['MeshGridEndFirstParams']
-    del maxcutbenchmark[i][j][k]['MeshGridEndLastParams']
+    maxcutbenchmark[i][j][k]["meshgrids"] = qaoa_costland(GRAPHS[graphnames_to_idx[j]], int(k), init_params, final_params)
 
-with open("./datafiles/output.pkl", "wb") as f:
+with open("../datafiles/output.pkl", "wb") as f:
     pkl.dump(maxcutbenchmark, f)
