@@ -75,6 +75,7 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False)
             qml.RZ(gamma, wires=wire2)
             qml.CNOT(wires=[wire1, wire2])
     if shots:
+        print("Starting shots", shots)
         dev = qml.device("default.qubit", wires=n_wires, analytic=False, shots=shots)
     else:
         dev = qml.device("default.qubit", wires=n_wires, analytic=True, shots=1)
@@ -128,6 +129,8 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False)
         losses.append(objective(params))
         if verbose:
             if i % 5 == 0: print(f"Objective at step {i} is {losses[-1]}")
+        if i % 10 == 0:
+            print("Shots", shots, "is up to", i)
     
     if MeshGrid:
         objstart, objend = obj_wrapper(init_params)
