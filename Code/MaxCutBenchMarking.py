@@ -9,7 +9,7 @@ from functools import partial
 from collections import defaultdict
 def strdefaultdict():
     return defaultdict(str)
-
+NUM_STEPS = 250
 # -----------------
 # SECTION 2: QAOA FOR MAX CUT
 #%% CONSTRUCTING CONNECTED GRAPHs
@@ -48,7 +48,7 @@ pauli_z_2 = np.kron(pauli_z, pauli_z)
 # %%
 # Leaving this as a function for multiprocessing speedup
 
-def qaoa_maxcut(opt, graph, n_layers, verbose=False):
+def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False):
     if opt == "adam":
         opt = qml.AdamOptimizer(0.1)
     elif opt == "gd":
@@ -74,8 +74,10 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False):
             qml.CNOT(wires=[wire1, wire2])
             qml.RZ(gamma, wires=wire2)
             qml.CNOT(wires=[wire1, wire2])
-
-    dev = qml.device("default.qubit", wires=n_wires, analytic=True, shots=1)
+    if shots:
+        dev = qml.device("default.qubit", wires=n_wires, analytic=False, shots=shots)
+    else:
+        dev = qml.device("default.qubit", wires=n_wires, analytic=True, shots=1)
     
     @qml.qnode(dev)
     def circuit(gammas, betas, edge=None, n_layers=1, n_wires=1):
@@ -118,29 +120,27 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False):
     params = init_params
 
     
-    steps = 100
+    steps = NUM_STEPS
     
     for i in range(steps):
         params = opt.step(objective, params)
         paramsrecord.append(params.tolist())
         losses.append(objective(params))
-        print(objective(params))
         if verbose:
             if i % 5 == 0: print(f"Objective at step {i} is {losses[-1]}")
     
-    
-    objstart, objend = obj_wrapper(init_params)
-    meshgridfirststartparams = objstart(X, Y)
-    meshgridfirstlastparams = objend(X,Y)
-    objstart, objend = obj_wrapper(params)
-    meshgridendfirstparams = objstart(X, Y)
-    meshgridendlastparams = objend(X,Y)
-   
-    print("Optimized (gamma, beta) vectors:\n{}".format(params[:, :n_layers]))
-
-    return {"losses":losses, "params":paramsrecord,\
+    if MeshGrid:
+        objstart, objend = obj_wrapper(init_params)
+        meshgridfirststartparams = objstart(X, Y)
+        meshgridfirstlastparams = objend(X,Y)
+        objstart, objend = obj_wrapper(params)
+        meshgridendfirstparams = objstart(X, Y)
+        meshgridendlastparams = objend(X,Y)
+        return {"losses":losses, "params":paramsrecord,\
         "MeshGridStartFirstParams":meshgridfirststartparams, "MeshGridStartLastParams":meshgridfirstlastparams, \
         "MeshGridEndFirstParams":meshgridendfirstparams, "MeshGridEndLastParams":meshgridendlastparams}
+    else:
+        return shots, losses
 '''
 Dictionary structure of output will look like
 {Optimizer:
@@ -160,10 +160,8 @@ Dictionary structure of output will look like
 
 #%%
 if __name__ == "__main__":
-    
-    
-
-    output = defaultdict(strdefaultdict)
+    PRODUCE_FULL_OUTPUT = False
+    SHOTS_TEST = True
 
     Ns = (4,   8,   12,  12)
     Ps = (0.2, 0.2, 0.3, 0.1)
@@ -172,23 +170,40 @@ if __name__ == "__main__":
     GRAPH_NAMES = ["4, 0.2", "8, 0.2", "12, 0.3", "12, 0.1"]
 
     OPTIM_NAMES = ["adam", "gd", "roto"]
-
-    arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(1,3)]
-    args_map = [(i,j,k) for i in OPTIM_NAMES for j in GRAPHS for k in range(1,3)]
-
     import multiprocessing
     pool = multiprocessing.Pool(multiprocessing.cpu_count())
-    results = pool.starmap(qaoa_maxcut, args_map)
-
-    for idx, (optim_name, graphname, layerno) in enumerate(arr_map_over):
-        output.setdefault(optim_name, {})
-        output.get(optim_name).setdefault(graphname, {})
-        output.get(optim_name).get(graphname).setdefault(str)
-        output[optim_name][graphname][layerno] = results[idx]
     
-    import pickle as pkl
-    with open("output.pkl", "wb") as f:
-        pkl.dump(output,f)
+    output = defaultdict(strdefaultdict)
+    if PRODUCE_FULL_OUTPUT:
+
+        arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(1,3)]
+        args_map = [(i,j,k) for i in OPTIM_NAMES for j in GRAPHS for k in range(1,3)]
+
+        results = pool.starmap(qaoa_maxcut, args_map)
+        pool.join()
+        pool.close()
+        
+        for idx, (optim_name, graphname, layerno) in enumerate(arr_map_over):
+            output.setdefault(optim_name, {})
+            output.get(optim_name).setdefault(graphname, {})
+            output.get(optim_name).get(graphname).setdefault(str)
+            output[optim_name][graphname][layerno] = results[idx]
+        
+        import pickle as pkl
+        with open("./datafiles/output.pkl", "wb") as f:
+            pkl.dump(output,f)
+
+
+    if SHOTS_TEST:
+        shot_arr = range(1,1002,20)
+        OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS))
+        args = [("adam", GRAPHS[1], 3, False, shots, False) for shots in shot_arr]
+        results = pool.starmap(qaoa_maxcut, args)
+        pool.close()
+        pool.join()
+        for idx, result in enumerate(results):
+            OUTPUT_ARR[idx] = result[1]
+        np.save("./datafiles/shotsmaxcut.npy", OUTPUT_ARR)
 
 # %%
 '''
