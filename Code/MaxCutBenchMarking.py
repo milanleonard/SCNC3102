@@ -202,7 +202,7 @@ if __name__ == "__main__":
         shot_arr = range(1,200,5)
         OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS))
         GRAPH = gnp_random_connected_graph(8,0.3,42)
-        args = [("adam", GRAPH, 6, False, shots, False) for shots in shot_arr]
+        args = [("gd", GRAPH, 6, False, shots, False) for shots in shot_arr]
         results = pool.starmap(qaoa_maxcut, args)
         pool.close()
         pool.join()
