@@ -208,7 +208,7 @@ if __name__ == "__main__":
         pool.join()
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
-        np.save("./datafiles/shotsmaxcutround2prime.npy", OUTPUT_ARR)
+        np.save("./datafiles/shotsmaxcutround2primegd.npy", OUTPUT_ARR)
 
 # %%
 '''
