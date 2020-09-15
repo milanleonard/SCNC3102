@@ -9,7 +9,7 @@ from functools import partial
 from collections import defaultdict
 def strdefaultdict():
     return defaultdict(str)
-NUM_STEPS = 250
+NUM_STEPS = 100
 # -----------------
 # SECTION 2: QAOA FOR MAX CUT
 #%% CONSTRUCTING CONNECTED GRAPHs
@@ -61,8 +61,7 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False)
     losses = []
     n_wires = len(graph.nodes)
     edges = graph.edges
-    grid_size = 100
-    X, Y = np.meshgrid(np.linspace(-np.pi,np.pi,grid_size),np.linspace(-np.pi,np.pi,grid_size))
+
     def U_B(beta):
         for wire in range(n_wires):
             qml.RX(2 * beta, wires=wire)
@@ -133,6 +132,8 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False)
             print("Shots", shots, "is up to", i)
     
     if MeshGrid:
+        grid_size = 100
+        X, Y = np.meshgrid(np.linspace(-np.pi,np.pi,grid_size),np.linspace(-np.pi,np.pi,grid_size))
         objstart, objend = obj_wrapper(init_params)
         meshgridfirststartparams = objstart(X, Y)
         meshgridfirstlastparams = objend(X,Y)
@@ -198,15 +199,16 @@ if __name__ == "__main__":
 
 
     if SHOTS_TEST:
-        shot_arr = range(1,1002,20)
+        shot_arr = range(1,200,5)
         OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS))
-        args = [("adam", GRAPHS[1], 3, False, shots, False) for shots in shot_arr]
+        GRAPH = gnp_random_connected_graph(8,0.3,42)
+        args = [("adam", GRAPHS[1], 6, False, shots, False) for shots in shot_arr]
         results = pool.starmap(qaoa_maxcut, args)
         pool.close()
         pool.join()
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
-        np.save("./datafiles/shotsmaxcut.npy", OUTPUT_ARR)
+        np.save("./datafiles/shotsmaxcutround2.npy", OUTPUT_ARR)
 
 # %%
 '''
