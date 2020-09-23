@@ -227,13 +227,13 @@ if __name__ == "__main__":
         NOISE_MODELS = [noise.NoiseModel() for i in range(len(noise_arr))]
         for NoiseModel, NoiseStrength in zip(NOISE_MODELS, noise_arr):
             NoiseModel.add_all_qubit_quantum_error(noise.depolarizing_error(NoiseStrength,1), ['u1','u2','u3'])
-        args = [("gd", GRAPH, 6, False, None, False, NoiseModel) for NoiseModel in NOISE_MODELS] 
+        args = [("adam", GRAPH, 6, False, None, False, NoiseModel) for NoiseModel in NOISE_MODELS] 
         results = pool.starmap(qaoa_maxcut, args)
         pool.close()
         pool.join()
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
-        np.save("./datafiles/depolnoise1qubit.npy", OUTPUT_ARR)
+        np.save("./datafiles/depolnoise1qubitadam.npy", OUTPUT_ARR)
 
 # %%
 '''
