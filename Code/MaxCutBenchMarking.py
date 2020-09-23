@@ -3,13 +3,14 @@ from pennylane import numpy as np # get pennylane's numpy wrapper
 import pennylane as qml
 from itertools import combinations, groupby
 import random
+import qiskit.providers.aer.noise as noise
 import networkx as nx
 from pennylane import expval, var
 from functools import partial
 from collections import defaultdict
 def strdefaultdict():
     return defaultdict(str)
-NUM_STEPS = 100
+NUM_STEPS = 5
 # -----------------
 # SECTION 2: QAOA FOR MAX CUT
 #%% CONSTRUCTING CONNECTED GRAPHs
@@ -48,7 +49,7 @@ pauli_z_2 = np.kron(pauli_z, pauli_z)
 # %%
 # Leaving this as a function for multiprocessing speedup
 
-def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False):
+def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False, NoiseModel=None):
     if opt == "adam":
         opt = qml.AdamOptimizer(0.1)
     elif opt == "gd":
@@ -73,12 +74,20 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False)
             qml.CNOT(wires=[wire1, wire2])
             qml.RZ(gamma, wires=wire2)
             qml.CNOT(wires=[wire1, wire2])
-    if shots:
-        print("Starting shots", shots)
-        dev = qml.device("default.qubit", wires=n_wires, analytic=False, shots=shots)
-    else:
-        dev = qml.device("default.qubit", wires=n_wires, analytic=True, shots=1)
     
+    if NoiseModel:
+        if shots:
+            print("Starting shots", shots)
+            dev = qml.device("qiskit.aer", wires=n_wires, shots=shots, noise_model=NoiseModel)
+        else:
+            dev = qml.device("qiskit.aer", wires=n_wires, noise_model=NoiseModel)
+    else:
+        if shots:
+            print("Starting shots", shots)
+            dev = qml.device("default.qubit", wires=n_wires, analytic=False, shots=shots)
+        else:
+            dev = qml.device("default.qubit", wires=n_wires, analytic=True, shots=1)
+        
     @qml.qnode(dev)
     def circuit(gammas, betas, edge=None, n_layers=1, n_wires=1):
         for wire in range(n_wires):
@@ -146,7 +155,7 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False)
     else:
         return shots, losses
 '''
-Dictionary structure of output will look like
+Dictionary structure of full output will look like
 {Optimizer:
   {Graph_Instace:
    {Num_Layers [1,2,3]:
@@ -165,7 +174,8 @@ Dictionary structure of output will look like
 #%%
 if __name__ == "__main__":
     PRODUCE_FULL_OUTPUT = False
-    SHOTS_TEST = True
+    SHOTS_TEST = False
+    NOISE_TEST = True
 
     Ns = (4,   8,   12,  12)
     Ps = (0.2, 0.2, 0.3, 0.1)
@@ -209,6 +219,21 @@ if __name__ == "__main__":
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
         np.save("./datafiles/shotsmaxcutround2primegd.npy", OUTPUT_ARR)
+
+    if NOISE_TEST:
+        noise_arr = np.linspace(0.001,0.3,100)
+        OUTPUT_ARR = np.zeros((len(noise_arr), NUM_STEPS))
+        GRAPH = gnp_random_connected_graph(8,0.3,42)
+        NOISE_MODELS = [noise.NoiseModel() for i in range(len(noise_arr))]
+        for NoiseModel, NoiseStrength in zip(NOISE_MODELS, noise_arr):
+            NoiseModel.add_all_qubit_quantum_error(noise.depolarizing_error(NoiseStrength,1), ['u1','u2','u3'])
+        args = [("gd", GRAPH, 6, False, None, False, NoiseModel) for NoiseModel in NOISE_MODELS] 
+        results = pool.starmap(qaoa_maxcut, args)
+        pool.close()
+        pool.join()
+        for idx, result in enumerate(results):
+            OUTPUT_ARR[idx] = result[1]
+        np.save("./datafiles/depolnoise1qubit.npy", OUTPUT_ARR)
 
 # %%
 '''
