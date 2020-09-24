@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     TEST_G = gnp_random_connected_graph(4,0.2,42)
     args = [(TEST_G, 3, 5000, noisemodel) for noisemodel in Noise_Models]
-    with Pool(15) as p:
+    with multiprocessing.Pool(15) as p:
         results = p.starmap(qaoa_maxcut_grid_noise, args)
     
     OUTPUT_ARR = np.zeros(10,50,50)
