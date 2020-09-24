@@ -11,6 +11,28 @@ from functools import partial
 from collections import defaultdict
 import qiskit.providers.aer.noise as noise
 
+def gnp_random_connected_graph(n, p, seed):
+    """Generate a random connected graph
+    n     : int, number of nodes
+    p     : float in [0,1]. Probability of creating an edge
+    seed  : int for initialising randomness
+    """
+    edges = combinations(range(n), 2)
+    G = nx.Graph()
+    G.add_nodes_from(range(n))
+    if p <= 0:
+        return G
+    if p >= 1:
+        return nx.complete_graph(n, create_using=G)
+    for _, node_edges in groupby(edges, key=lambda x: x[0]):
+        node_edges = list(node_edges)
+        random_edge = random.choice(node_edges)
+        G.add_edge(*random_edge)
+        for e in node_edges:
+            if random.random() < p:
+                G.add_edge(*e)
+    return G
+
 def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
 
     n_wires = len(graph.nodes)
@@ -75,14 +97,14 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
 
 if __name__ == "__main__":
     import multiprocessing
-    noise_args = np.linspace(0,0.1,10)
+    noise_args = np.linspace(0,0.15,15)
     Noise_Models = [noise.NoiseModel() for i in range(10)]
     for noise_arg, noisemodel in zip(noise_args, Noise_Models):
         noisemodel.add_all_qubit_quantum_error(noise.depolarizing_error(noise_arg ,1), ['u1','u2','u3'])
 
     TEST_G = gnp_random_connected_graph(4,0.2,42)
     args = [(TEST_G, 3, 5000, noisemodel) for noisemodel in Noise_Models]
-    with Pool(10) as p:
+    with Pool(15) as p:
         results = p.starmap(qaoa_maxcut_grid_noise, args)
     
     OUTPUT_ARR = np.zeros(10,50,50)
