@@ -14,6 +14,7 @@
 4. Shot noise
    1. Discussion about why some optimizers were effective against shot noise and why some completely failed to work
 5. Depolarising noise
+
 ## Abstract
 For the end
 

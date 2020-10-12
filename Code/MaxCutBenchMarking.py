@@ -18,6 +18,7 @@ NUM_STEPS = 5
 Setup a way to construct connected graph instance problems
 """
 def gnp_random_connected_graph(n, p, seed):
+    random.seed(seed)
     """Generate a random connected graph
     n     : int, number of nodes
     p     : float in [0,1]. Probability of creating an edge
@@ -101,7 +102,7 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
         
         return qml.expval(qml.Hermitian(pauli_z_2, wires=edge))
     
-    init_params = 0.01 * np.random.rand(2, n_layers)
+    init_params = 0.01 * np.random.rand(n_wires, n_layers)
     
     def obj_wrapper(params):
         objstart = partial(objective, params, True, False)
@@ -173,9 +174,9 @@ Dictionary structure of full output will look like
 
 #%%
 if __name__ == "__main__":
-    PRODUCE_FULL_OUTPUT = False
+    PRODUCE_FULL_OUTPUT = True
     SHOTS_TEST = False
-    NOISE_TEST = True
+    NOISE_TEST = False
 
     Ns = (4,   8,   12,  12)
     Ps = (0.2, 0.2, 0.3, 0.1)
@@ -204,7 +205,7 @@ if __name__ == "__main__":
             output[optim_name][graphname][layerno] = results[idx]
         
         import pickle as pkl
-        with open("./datafiles/output.pkl", "wb") as f:
+        with open("./datafiles/outputprime.pkl", "wb") as f:
             pkl.dump(output,f)
 
 
