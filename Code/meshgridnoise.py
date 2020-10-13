@@ -10,13 +10,17 @@ from pennylane import expval, var
 from functools import partial
 from collections import defaultdict
 import qiskit.providers.aer.noise as noise
+pauli_z = [[1, 0], [0, -1]]
+pauli_z_2 = np.kron(pauli_z, pauli_z)
 
+grid_size = 5
 def gnp_random_connected_graph(n, p, seed):
     """Generate a random connected graph
     n     : int, number of nodes
     p     : float in [0,1]. Probability of creating an edge
     seed  : int for initialising randomness
     """
+    random.seed(seed)
     edges = combinations(range(n), 2)
     G = nx.Graph()
     G.add_nodes_from(range(n))
@@ -49,8 +53,10 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
             qml.CNOT(wires=[wire1, wire2])
             qml.RZ(gamma, wires=wire2)
             qml.CNOT(wires=[wire1, wire2])
-    
-    dev = qml.device("qiskit.aer", wires=n_wires, shots=shots, noise_model=NoiseModel)
+    if NoiseModel:
+        dev = qml.device("qiskit.aer", wires=n_wires, shots=shots, noise_model=NoiseModel)
+    else:
+        dev = qml.device("default.qubit", wires=n_wires, shots=shots, analytic=False)
 
     @qml.qnode(dev)
     def circuit(gammas, betas, edge=None, n_layers=1, n_wires=1):
@@ -59,9 +65,6 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
         for i in range(n_layers):
             U_C(gammas[i])
             U_B(betas[i])
-        if edges is None:
-            # measurement phase
-            return qml.sample(comp_basis_measurement(range(n_wires)))
         
         return qml.expval(qml.Hermitian(pauli_z_2, wires=edge))
     
@@ -86,28 +89,35 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
             neg_obj -= 0.5 * (1 - circuit(gammas, betas, edge=edge, n_layers=n_layers, n_wires=n_wires))
         return neg_obj
     
-    grid_size = 50
+    
     X, Y = np.meshgrid(np.linspace(-np.pi,np.pi,grid_size),np.linspace(-np.pi,np.pi,grid_size))
     objstart, objend = obj_wrapper(init_params)
     meshgridfirststartparams = objstart(X, Y)
     meshgridfirstlastparams = objend(X,Y)
 
-    return meshgridfirststartparams, meshgridfirstlastparams
+    return meshgridfirststartparams#, meshgridfirstlastparams
 
 
 if __name__ == "__main__":
     import multiprocessing
-    noise_args = np.linspace(0,0.15,15)
-    Noise_Models = [noise.NoiseModel() for i in range(10)]
-    for noise_arg, noisemodel in zip(noise_args, Noise_Models):
-        noisemodel.add_all_qubit_quantum_error(noise.depolarizing_error(noise_arg ,1), ['u1','u2','u3'])
-
+    Noise_Modelling = False
+    Shots_Modelling = True
     TEST_G = gnp_random_connected_graph(4,0.2,42)
-    args = [(TEST_G, 3, 5000, noisemodel) for noisemodel in Noise_Models]
+    if Noise_Modelling:
+        noise_args = np.linspace(0,0.15,15)
+        Noise_Models = [noise.NoiseModel() for i in range(10)]
+        for noise_arg, noisemodel in zip(noise_args, Noise_Models):
+            noisemodel.add_all_qubit_quantum_error(noise.depolarizing_error(noise_arg ,1), ['u1','u2','u3'])
+        args = [(TEST_G, 3, 5000, noisemodel) for noisemodel in Noise_Models]
+        OUTPUT_ARR = np.zeros((len(Noise_Models),grid_size,grid_size))
+    elif Shots_Modelling:
+        shots_arr = np.arange(1,12,5)
+        args = [(TEST_G,4,i,None) for i in shots_arr]
+        OUTPUT_ARR = np.zeros((len(shots_arr),grid_size,grid_size)) 
+    
     with multiprocessing.Pool(15) as p:
         results = p.starmap(qaoa_maxcut_grid_noise, args)
-    
-    OUTPUT_ARR = np.zeros(10,50,50)
     for idx, result in enumerate(results):
         OUTPUT_ARR[idx] = result
-    np.save("./datafiles/meshgridsnoisy.npy", OUTPUT_ARR)
+
+    np.save("./datafiles/meshgridsnoisy.npy", OUTPUT_ARR) if Noise_Modelling else np.save("./datafiles/meshgridshots.npy",OUTPUT_ARR)
