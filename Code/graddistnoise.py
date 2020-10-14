@@ -99,7 +99,6 @@ def grad_compare_qaoa_noise(graph, n_layers, NoiseModel=None, shots=None):
     return qml.grad(analytic_objective), qml.grad(noisy_objective)
     
 TEST_G = gnp_random_connected_graph(4,0.2,42)
-init_params = 0.01 * pnp.random.rand(2, 2)
 
 def perform_test(shots, num_tests, num_layers):
     analytic_grad, noisy_grad = grad_compare_qaoa_noise(TEST_G, num_layers, shots=shots)
@@ -123,10 +122,11 @@ def perform_test(shots, num_tests, num_layers):
 
 if __name__ == "__main__":
     import multiprocessing
-    num_tests = 4
-    shots_arr = np.linspace(1,200,5)
-    num_layers = 2
-    args = [(shots, num_tests, 2) for shots in shots_arr]
+    init_params = 0.01 * pnp.random.rand(2, 3)
+    num_tests = 300
+    shots_arr = np.arange(1,150,2)
+    num_layers = 3
+    args = [(shots, num_tests, num_layers) for shots in shots_arr]
     with multiprocessing.Pool(multiprocessing.cpu_count()-1) as p:
         results = p.starmap(perform_test, args)
     OUTPUT_ARR = np.zeros((len(results), 2*num_layers, num_tests))

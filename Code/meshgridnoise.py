@@ -13,7 +13,7 @@ import qiskit.providers.aer.noise as noise
 pauli_z = [[1, 0], [0, -1]]
 pauli_z_2 = np.kron(pauli_z, pauli_z)
 
-grid_size = 5
+grid_size = 50
 def gnp_random_connected_graph(n, p, seed):
     """Generate a random connected graph
     n     : int, number of nodes
@@ -36,6 +36,9 @@ def gnp_random_connected_graph(n, p, seed):
             if random.random() < p:
                 G.add_edge(*e)
     return G
+
+pauli_z = [[1, 0], [0, -1]]
+pauli_z_2 = np.kron(pauli_z, pauli_z)
 
 def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
 
@@ -65,10 +68,8 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
         for i in range(n_layers):
             U_C(gammas[i])
             U_B(betas[i])
-        
         return qml.expval(qml.Hermitian(pauli_z_2, wires=edge))
-    
-    init_params = 0.01 * np.random.rand(2, n_layers)
+    init_params = 0.01 * np.random.rand(n_wires, n_layers)
     
     def obj_wrapper(params):
         objstart = partial(objective, params, True, False)
@@ -88,8 +89,7 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
         for edge in edges:
             neg_obj -= 0.5 * (1 - circuit(gammas, betas, edge=edge, n_layers=n_layers, n_wires=n_wires))
         return neg_obj
-    
-    
+
     X, Y = np.meshgrid(np.linspace(-np.pi,np.pi,grid_size),np.linspace(-np.pi,np.pi,grid_size))
     objstart, objend = obj_wrapper(init_params)
     meshgridfirststartparams = objstart(X, Y)
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     import multiprocessing
     Noise_Modelling = False
     Shots_Modelling = True
-    TEST_G = gnp_random_connected_graph(4,0.2,42)
+    TEST_G = gnp_random_connected_graph(6,0.2,42)
     if Noise_Modelling:
         noise_args = np.linspace(0,0.15,15)
         Noise_Models = [noise.NoiseModel() for i in range(10)]
@@ -111,7 +111,7 @@ if __name__ == "__main__":
         args = [(TEST_G, 3, 5000, noisemodel) for noisemodel in Noise_Models]
         OUTPUT_ARR = np.zeros((len(Noise_Models),grid_size,grid_size))
     elif Shots_Modelling:
-        shots_arr = np.arange(1,12,5)
+        shots_arr = np.arange(1,152,5)
         args = [(TEST_G,4,i,None) for i in shots_arr]
         OUTPUT_ARR = np.zeros((len(shots_arr),grid_size,grid_size)) 
     
