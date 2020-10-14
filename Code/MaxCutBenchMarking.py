@@ -11,7 +11,7 @@ from collections import defaultdict
 import time
 def strdefaultdict():
     return defaultdict(str)
-NUM_STEPS = 101
+NUM_STEPS = 51
 # -----------------
 # SECTION 2: QAOA FOR MAX CUT
 #%% CONSTRUCTING CONNECTED GRAPHs
@@ -94,16 +94,16 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
     def circuit(gammas, betas, edge=None, n_layers=1, n_wires=1):
         for wire in range(n_wires):
             qml.Hadamard(wires=wire)
-        for i in range(n_layers):
-            U_C(gammas[i])
-            U_B(betas[i])
+        for i,j in zip(range(n_wires),range(n_layers)):
+            U_C(gammas[i,j])
+            U_B(betas[i,j])
         if edges is None:
             # measurement phase
             return qml.sample(comp_basis_measurement(range(n_wires)))
         
         return qml.expval(qml.Hermitian(pauli_z_2, wires=edge))
     np.random.seed(42)
-    init_params = 0.01 * np.random.rand(n_wires, n_layers)
+    init_params = 0.01 * np.random.rand(2, n_wires, n_layers)
     
     def obj_wrapper(params):
         objstart = partial(objective, params, True, False)
@@ -114,11 +114,11 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
         gammas = params[0]
         betas = params[1]
         if start:
-            gammas[0] = X
-            betas[0] = Y
+            gammas[0,0] = X
+            betas[0,0] = Y
         elif end:
-            gammas[-1] = X
-            betas[-1] = Y 
+            gammas[-1,0] = X
+            betas[-1,0] = Y 
         neg_obj = 0
         for edge in edges:
             neg_obj -= 0.5 * (1 - circuit(gammas, betas, edge=edge, n_layers=n_layers, n_wires=n_wires))
@@ -177,15 +177,15 @@ Dictionary structure of full output will look like
 
 #%%
 if __name__ == "__main__":
-    PRODUCE_FULL_OUTPUT = False
-    SHOTS_TEST = True
+    PRODUCE_FULL_OUTPUT = True
+    SHOTS_TEST = False
     NOISE_TEST = False
 
     Ns = (4,   6,   8,  8)
-    Ps = (0.2, 0.2, 0.3, 0.5)
+    Ps = (0.2, 0.3, 0.2, 0.5)
 
     GRAPHS = [gnp_random_connected_graph(n,p, 42) for n,p in zip(Ns, Ps)]
-    GRAPH_NAMES = ["4, 0.2", "8, 0.2", "12, 0.3", "12, 0.1"]
+    GRAPH_NAMES = ["4, 0.2", "6, 0.3", "8, 0.2", "8, 0.5"]
 
     OPTIM_NAMES = ["adam", "gd", "roto"]
     import multiprocessing
@@ -194,8 +194,8 @@ if __name__ == "__main__":
     output = defaultdict(strdefaultdict)
     if PRODUCE_FULL_OUTPUT:
 
-        arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(1,3)]
-        args_map = [(i,j,k, True, None, True) for i in OPTIM_NAMES for j in GRAPHS for k in range(1,3)]
+        arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(2,5)]
+        args_map = [(i,j,k, True, None, True) for i in OPTIM_NAMES for j in GRAPHS for k in range(2,5)]
 
         results = pool.starmap(qaoa_maxcut, args_map)
         pool.close()
