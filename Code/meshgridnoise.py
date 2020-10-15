@@ -65,11 +65,13 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
     def circuit(gammas, betas, edge=None, n_layers=1, n_wires=1):
         for wire in range(n_wires):
             qml.Hadamard(wires=wire)
-        for i in range(n_layers):
-            U_C(gammas[i])
-            U_B(betas[i])
+        for i,j in zip(range(n_wires),range(n_layers)):
+            U_C(gammas[i,j])
+            U_B(betas[i,j])
+        
         return qml.expval(qml.Hermitian(pauli_z_2, wires=edge))
-    init_params = 0.01 * np.random.rand(n_wires, n_layers)
+    np.random.seed(42)
+    init_params = 0.01 * np.random.rand(2, n_wires, n_layers)
     
     def obj_wrapper(params):
         objstart = partial(objective, params, True, False)
@@ -80,11 +82,11 @@ def qaoa_maxcut_grid_noise(graph, n_layers, shots=5000, NoiseModel=None):
         gammas = params[0]
         betas = params[1]
         if start:
-            gammas[0] = X
-            betas[0] = Y
+            gammas[0,0] = X
+            betas[0,0] = Y
         elif end:
-            gammas[-1] = X
-            betas[-1] = Y 
+            gammas[-1,0] = X
+            betas[-1,0] = Y 
         neg_obj = 0
         for edge in edges:
             neg_obj -= 0.5 * (1 - circuit(gammas, betas, edge=edge, n_layers=n_layers, n_wires=n_wires))
@@ -111,11 +113,11 @@ if __name__ == "__main__":
         args = [(TEST_G, 3, 5000, noisemodel) for noisemodel in Noise_Models]
         OUTPUT_ARR = np.zeros((len(Noise_Models),grid_size,grid_size))
     elif Shots_Modelling:
-        shots_arr = np.arange(1,152,5)
+        shots_arr = np.arange(5,101,1)
         args = [(TEST_G,4,i,None) for i in shots_arr]
         OUTPUT_ARR = np.zeros((len(shots_arr),grid_size,grid_size)) 
     
-    with multiprocessing.Pool(15) as p:
+    with multiprocessing.Pool(multiprocessing.cpu_count()-2) as p:
         results = p.starmap(qaoa_maxcut_grid_noise, args)
     for idx, result in enumerate(results):
         OUTPUT_ARR[idx] = result
