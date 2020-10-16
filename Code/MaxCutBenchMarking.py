@@ -177,8 +177,8 @@ Dictionary structure of full output will look like
 
 #%%
 if __name__ == "__main__":
-    PRODUCE_FULL_OUTPUT = True
-    SHOTS_TEST = False
+    PRODUCE_FULL_OUTPUT = False
+    SHOTS_TEST = True
     NOISE_TEST = False
 
     Ns = (4,   6,   8,  8)
@@ -216,7 +216,7 @@ if __name__ == "__main__":
         shot_arr = range(5,101,2)
         OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS+1))
         GRAPH = gnp_random_connected_graph(4,0.2,42)
-        args = [("gd", GRAPH, 3, False, shots, False) for shots in shot_arr]
+        args = [("adam", GRAPH, 3, False, shots, False) for shots in shot_arr]
         results = pool.starmap(qaoa_maxcut, args)
         pool.close()
         pool.join()
