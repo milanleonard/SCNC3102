@@ -216,13 +216,13 @@ if __name__ == "__main__":
         shot_arr = range(5,101,2)
         OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS+1))
         GRAPH = gnp_random_connected_graph(4,0.2,42)
-        args = [("adam", GRAPH, 3, False, shots, False) for shots in shot_arr]
+        args = [("roto", GRAPH, 3, False, shots, False) for shots in shot_arr]
         results = pool.starmap(qaoa_maxcut, args)
         pool.close()
         pool.join()
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
-        np.save("./datafiles/shotsmaxcutadam2.npy", OUTPUT_ARR)
+        np.save("./datafiles/shotsmaxcutroto2.npy", OUTPUT_ARR)
 
     if NOISE_TEST:
         noise_arr = np.linspace(0.001,0.3,100)
