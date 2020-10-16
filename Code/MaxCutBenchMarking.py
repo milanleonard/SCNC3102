@@ -222,7 +222,7 @@ if __name__ == "__main__":
         pool.join()
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
-        np.save("./datafiles/shotsmaxcutadamfinal.npy", OUTPUT_ARR)
+        np.save("./datafiles/shotsmaxcutadam2.npy", OUTPUT_ARR)
 
     if NOISE_TEST:
         noise_arr = np.linspace(0.001,0.3,100)
