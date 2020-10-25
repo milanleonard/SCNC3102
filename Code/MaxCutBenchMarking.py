@@ -8,9 +8,10 @@ import networkx as nx
 from pennylane import expval, var
 from functools import partial
 from collections import defaultdict
+import time
 def strdefaultdict():
     return defaultdict(str)
-NUM_STEPS = 5
+NUM_STEPS = 51
 # -----------------
 # SECTION 2: QAOA FOR MAX CUT
 #%% CONSTRUCTING CONNECTED GRAPHs
@@ -18,6 +19,7 @@ NUM_STEPS = 5
 Setup a way to construct connected graph instance problems
 """
 def gnp_random_connected_graph(n, p, seed):
+    random.seed(seed)
     """Generate a random connected graph
     n     : int, number of nodes
     p     : float in [0,1]. Probability of creating an edge
@@ -50,6 +52,7 @@ pauli_z_2 = np.kron(pauli_z, pauli_z)
 # Leaving this as a function for multiprocessing speedup
 
 def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False, NoiseModel=None):
+    start = time.time()
     if opt == "adam":
         opt = qml.AdamOptimizer(0.1)
     elif opt == "gd":
@@ -59,7 +62,6 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
     elif opt == "roto":
         opt = qml.RotosolveOptimizer()
     # SETUP PARAMETERS
-    losses = []
     n_wires = len(graph.nodes)
     edges = graph.edges
 
@@ -92,16 +94,16 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
     def circuit(gammas, betas, edge=None, n_layers=1, n_wires=1):
         for wire in range(n_wires):
             qml.Hadamard(wires=wire)
-        for i in range(n_layers):
-            U_C(gammas[i])
-            U_B(betas[i])
+        for i,j in zip(range(n_wires),range(n_layers)):
+            U_C(gammas[i,j])
+            U_B(betas[i,j])
         if edges is None:
             # measurement phase
             return qml.sample(comp_basis_measurement(range(n_wires)))
         
         return qml.expval(qml.Hermitian(pauli_z_2, wires=edge))
-    
-    init_params = 0.01 * np.random.rand(2, n_layers)
+    np.random.seed(42)
+    init_params = 0.01 * np.random.rand(2, n_wires, n_layers)
     
     def obj_wrapper(params):
         objstart = partial(objective, params, True, False)
@@ -112,11 +114,11 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
         gammas = params[0]
         betas = params[1]
         if start:
-            gammas[0] = X
-            betas[0] = Y
+            gammas[0,0] = X
+            betas[0,0] = Y
         elif end:
-            gammas[-1] = X
-            betas[-1] = Y 
+            gammas[-1,0] = X
+            betas[-1,0] = Y 
         neg_obj = 0
         for edge in edges:
             neg_obj -= 0.5 * (1 - circuit(gammas, betas, edge=edge, n_layers=n_layers, n_wires=n_wires))
@@ -127,17 +129,19 @@ def qaoa_maxcut(opt, graph, n_layers, verbose=False, shots=None, MeshGrid=False,
     paramsrecord = [init_params.tolist()]
     print(f"Start objective fn {objective(init_params)}")
     params = init_params
-
-    
+    losses = [objective(params)]
+    print(f"{str(opt).split('.')[-1]} with {len(graph.nodes)} nodes initial loss {losses[0]}")
     steps = NUM_STEPS
     
     for i in range(steps):
         params = opt.step(objective, params)
+        if i == 0:
+            print(f"{str(opt).split('.')[-1]} with {len(graph.nodes)} nodes took {time.time()-start:.5f}s for 1 iteration")
         paramsrecord.append(params.tolist())
         losses.append(objective(params))
         if verbose:
             if i % 5 == 0: print(f"Objective at step {i} is {losses[-1]}")
-        if i % 10 == 0:
+        if i % 10 == 0 and shots:
             print("Shots", shots, "is up to", i)
     
     if MeshGrid:
@@ -174,28 +178,28 @@ Dictionary structure of full output will look like
 #%%
 if __name__ == "__main__":
     PRODUCE_FULL_OUTPUT = False
-    SHOTS_TEST = False
-    NOISE_TEST = True
+    SHOTS_TEST = True
+    NOISE_TEST = False
 
-    Ns = (4,   8,   12,  12)
-    Ps = (0.2, 0.2, 0.3, 0.1)
+    Ns = (4,   6,   8,  8)
+    Ps = (0.2, 0.3, 0.2, 0.5)
 
     GRAPHS = [gnp_random_connected_graph(n,p, 42) for n,p in zip(Ns, Ps)]
-    GRAPH_NAMES = ["4, 0.2", "8, 0.2", "12, 0.3", "12, 0.1"]
+    GRAPH_NAMES = ["4, 0.2", "6, 0.3", "8, 0.2", "8, 0.5"]
 
     OPTIM_NAMES = ["adam", "gd", "roto"]
     import multiprocessing
-    pool = multiprocessing.Pool(multiprocessing.cpu_count())
+    pool = multiprocessing.Pool(multiprocessing.cpu_count()-2)
     
     output = defaultdict(strdefaultdict)
     if PRODUCE_FULL_OUTPUT:
 
-        arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(1,3)]
-        args_map = [(i,j,k) for i in OPTIM_NAMES for j in GRAPHS for k in range(1,3)]
+        arr_map_over = [(i,j,str(k)) for i in OPTIM_NAMES for j in GRAPH_NAMES for k in range(2,5)]
+        args_map = [(i,j,k, True, None, True) for i in OPTIM_NAMES for j in GRAPHS for k in range(2,5)]
 
         results = pool.starmap(qaoa_maxcut, args_map)
-        pool.join()
         pool.close()
+        pool.join()
         
         for idx, (optim_name, graphname, layerno) in enumerate(arr_map_over):
             output.setdefault(optim_name, {})
@@ -204,25 +208,25 @@ if __name__ == "__main__":
             output[optim_name][graphname][layerno] = results[idx]
         
         import pickle as pkl
-        with open("./datafiles/output.pkl", "wb") as f:
+        with open("./datafiles/outputprime.pkl", "wb") as f:
             pkl.dump(output,f)
 
 
     if SHOTS_TEST:
-        shot_arr = range(1,200,5)
-        OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS))
-        GRAPH = gnp_random_connected_graph(8,0.3,42)
-        args = [("gd", GRAPH, 6, False, shots, False) for shots in shot_arr]
+        shot_arr = range(5,101,2)
+        OUTPUT_ARR = np.zeros((len(shot_arr), NUM_STEPS+1))
+        GRAPH = gnp_random_connected_graph(4,0.2,42)
+        args = [("roto", GRAPH, 3, False, shots, False) for shots in shot_arr]
         results = pool.starmap(qaoa_maxcut, args)
         pool.close()
         pool.join()
         for idx, result in enumerate(results):
             OUTPUT_ARR[idx] = result[1]
-        np.save("./datafiles/shotsmaxcutround2primegd.npy", OUTPUT_ARR)
+        np.save("./datafiles/shotsmaxcutroto2.npy", OUTPUT_ARR)
 
     if NOISE_TEST:
         noise_arr = np.linspace(0.001,0.3,100)
-        OUTPUT_ARR = np.zeros((len(noise_arr), NUM_STEPS))
+        OUTPUT_ARR = np.zeros((len(noise_arr), NUM_STEPS+1))
         GRAPH = gnp_random_connected_graph(8,0.3,42)
         NOISE_MODELS = [noise.NoiseModel() for i in range(len(noise_arr))]
         for NoiseModel, NoiseStrength in zip(NOISE_MODELS, noise_arr):

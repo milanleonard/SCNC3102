@@ -12,7 +12,7 @@ from pennylane import expval, var
 ## COMPUTE TRUE MINIMUM
 # SECTION 1: SINGLE VQE PROBLEM - QNG, SGD, ADAM etc. GO THROUGH EACH OF THE GRADIENT BASED UPDATE METHODS
 """ SETUP VARIATONAL CIRCUIT: TAKEN FROM https://pennylane.ai/qml/demos/tutorial_quantum_natural_gradient.html"""
-dev = qml.device("default.qubit", wires=3)
+dev = qml.device("default.qubit", wires=3, analytic=False, shots=100)
 @qml.qnode(dev)
 def circuit(params):
     # |psi_0>: state preparation
@@ -38,18 +38,20 @@ def circuit(params):
 
     return qml.expval(qml.PauliY(0)) 
 # %% GLOBAL PARAMS FOR EACH TEST
-steps = 400
+steps = 10
 init_params = np.array([0.432, -0.123, 0.543, 0.233])
 
 #%%
 
 GradientDescentCost = [circuit(init_params)]
 opt = qml.GradientDescentOptimizer(0.01)
-
 thetagd = init_params
+gdparams = [thetagd]
 for _ in range(steps):
     thetagd = opt.step(circuit, thetagd)
+    gdparams.append(thetagd)
     GradientDescentCost.append(circuit(thetagd))
+gdparams = np.array(gdparams)
 #%% Quantum natural gradient
 
 Quantum_natural_GD_Cost = [circuit(init_params)]
@@ -57,9 +59,12 @@ Quantum_natural_GD_Cost = [circuit(init_params)]
 opt = qml.QNGOptimizer(0.01)
 
 thetaqng = init_params
+qngparams = [thetaqng]
 for _ in range(steps):
     thetaqng = opt.step(circuit, thetaqng)
+    qngparams.append(thetaqng)
     Quantum_natural_GD_Cost.append(circuit(thetaqng))
+qngparams = np.array(qngparams)
 
 #%% ROTOSOLVE
 
@@ -84,12 +89,20 @@ for _ in range(steps):
 
 
 
-
 #%% Plotting
+plt.plot(np.arange(1,402)*2, GradientDescentCost, label='Standard gradient descent')
+plt.plot(np.arange(1,201)*4, Quantum_natural_GD_Cost[:200], label='Quantum Natural Gradient')
+plt.plot(np.arange(1,101)*7, Rotosolve_Cost[:100], label='Rotosolve analytic minimum')
+plt.plot(np.arange(1,402)*2, Adam_Cost, label="Adam optimiser")
+plt.legend()
+plt.xlabel("Number of circuit evaluations")
+plt.ylabel("Cost function")
+plt.title("Optimiser performance considering circuit evaluation requirements")
+plt.savefig("Images/descentcomparefair.png")
 
 #%% Running the plot
-plot_descents(save=False)
-2#%% Let's have a look at the cost landscape
+
+#%% Let's have a look at the cost landscape
 from functools import partial
 def wrap_circuit(param1,param2):
     def circuit_wrap(theta0,theta1,theta2,theta3):
@@ -106,7 +119,6 @@ Z = circuitwrapvec(X,Y)
 # Plot this stuff
 fig = plt.figure()
 ax = plt.axes(projection='3d')
-
 ax.plot_surface(X, Y, Z,cmap='viridis', edgecolor='none')
 ax.set_title('Cost landscape for two parameters')
 ax.set_xlabel("theta_1")
